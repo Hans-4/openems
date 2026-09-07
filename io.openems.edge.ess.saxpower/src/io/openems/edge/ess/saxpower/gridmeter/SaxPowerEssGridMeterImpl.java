@@ -16,6 +16,7 @@ import io.openems.edge.common.component.OpenemsComponent;
 import io.openems.edge.common.modbusslave.ModbusSlave;
 import io.openems.edge.common.modbusslave.ModbusSlaveTable;
 import io.openems.edge.common.taskmanager.Priority;
+import io.openems.edge.ess.saxpower.AddressList;
 import io.openems.edge.meter.api.ElectricityMeter;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
@@ -39,7 +40,11 @@ import org.osgi.service.metatype.annotations.Designate;
 public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
         implements SaxPowerEssGridMeter, ElectricityMeter, OpenemsComponent, ModbusComponent, ModbusSlave {
 
-    public static final int GRID_POWER_WELL_KNOWN_SCALE = 1;
+    int gridPowerAddress = AddressList.GRID_POWER.getAddress();
+    int gridPowerL1Address = AddressList.GRID_POWER_L1.getAddress();
+    int gridPowerL2Address = AddressList.GRID_POWER_L2.getAddress();
+    int gridPowerL3Address = AddressList.GRID_POWER_L3.getAddress();
+    int gridPowerScaleFactorAddress = AddressList.GRID_POWER_SCALE_FACTOR.getAddress();
 
     @Reference
     private ConfigurationAdmin cm;
@@ -55,7 +60,7 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
         super.setModbus(modbus);
     }
 
-    private final UnsignedWordElement gridPowerScaleFactor = new UnsignedWordElement(40076);
+    private final UnsignedWordElement gridPowerScaleFactor = new UnsignedWordElement(gridPowerScaleFactorAddress);
 
     public SaxPowerEssGridMeterImpl() {
         super(//
@@ -95,7 +100,7 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
 
     public int getGridPowerScaleFactor() {
         IntegerReadChannel value = this.channel(SaxPowerEssGridMeter.ChannelId.GRID_POWER_SCALE_FACTOR);
-        return value.getNextValue().orElse(GRID_POWER_WELL_KNOWN_SCALE);
+        return value.getNextValue().orElse(null);
     }
     public int scalePower(int raw) {
         return (int) (((Number) raw).intValue() * Math.pow(10, this.getGridPowerScaleFactor()));
@@ -115,14 +120,14 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
     @Override
     protected ModbusProtocol defineModbusProtocol() {
         return new ModbusProtocol(this,
-                new FC3ReadRegistersTask(40076, Priority.HIGH,
+                new FC3ReadRegistersTask(gridPowerScaleFactorAddress, Priority.HIGH,
                         m(SaxPowerEssGridMeter.ChannelId.GRID_POWER_SCALE_FACTOR, this.gridPowerScaleFactor)
                 ),
-                new FC3ReadRegistersTask(40072, Priority.HIGH, //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER,    new UnsignedWordElement(40072), this.scaleConverter), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new UnsignedWordElement(40073), this.scaleConverter), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new UnsignedWordElement(40074), this.scaleConverter), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new UnsignedWordElement(40075), this.scaleConverter)
+                new FC3ReadRegistersTask(gridPowerAddress, Priority.HIGH, //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER,    new UnsignedWordElement(gridPowerAddress), this.scaleConverter), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new UnsignedWordElement(gridPowerL1Address), this.scaleConverter), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new UnsignedWordElement(gridPowerL2Address), this.scaleConverter), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new UnsignedWordElement(gridPowerL3Address), this.scaleConverter)
                 )
         );
     }
