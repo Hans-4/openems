@@ -22,7 +22,7 @@ public @interface Config {
     String modbus_id() default "modbus0";
 
     @AttributeDefinition(name = "Modbus Unit-ID", description = "The Unit-ID of the Modbus device.")
-    int modbusUnitId() default 64;
+    int modbusUnitId() default 100;
 
     @AttributeDefinition(name = "Phase", description = "Which Phase is this ESS connected to?")
     SinglePhase phase() default SinglePhase.L1;
