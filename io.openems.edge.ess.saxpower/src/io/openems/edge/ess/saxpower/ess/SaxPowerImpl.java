@@ -5,18 +5,15 @@ import io.openems.common.exceptions.OpenemsError;
 import io.openems.common.referencetarget.GenerateTargetsFromReferences;
 import io.openems.edge.bridge.modbus.api.AbstractOpenemsModbusComponent;
 import io.openems.edge.bridge.modbus.api.BridgeModbus;
-import io.openems.edge.bridge.modbus.api.ElementToChannelConverter;
 import io.openems.edge.bridge.modbus.api.ModbusComponent;
 import io.openems.edge.bridge.modbus.api.ModbusProtocol;
-import io.openems.edge.bridge.modbus.api.element.UnsignedWordElement;
-import io.openems.edge.bridge.modbus.api.task.FC16WriteRegistersTask;
+import io.openems.edge.bridge.modbus.api.element.SignedWordElement;
 import io.openems.edge.bridge.modbus.api.task.FC3ReadRegistersTask;
 import io.openems.edge.common.component.OpenemsComponent;
 import io.openems.edge.common.modbusslave.ModbusSlave;
 import io.openems.edge.common.modbusslave.ModbusSlaveTable;
 import io.openems.edge.common.taskmanager.Priority;
 import io.openems.edge.common.type.Phase.SinglePhase;
-import io.openems.edge.common.type.TypeUtils;
 import io.openems.edge.ess.api.AsymmetricEss;
 import io.openems.edge.ess.api.ManagedAsymmetricEss;
 import io.openems.edge.ess.api.ManagedSinglePhaseEss;
@@ -25,6 +22,8 @@ import io.openems.edge.ess.api.SinglePhaseEss;
 import io.openems.edge.ess.api.SymmetricEss;
 import io.openems.edge.ess.power.api.Power;
 import io.openems.edge.common.sum.GridMode;
+import io.openems.edge.ess.saxpower.AddressList;
+import io.openems.edge.ess.saxpower.ApplyScaleFactor;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
@@ -51,9 +50,18 @@ import static org.osgi.service.component.annotations.ReferencePolicyOption.GREED
 public class SaxPowerImpl extends AbstractOpenemsModbusComponent
         implements SaxPower, ManagedSinglePhaseEss, SinglePhaseEss, ManagedAsymmetricEss, AsymmetricEss, ManagedSymmetricEss, SymmetricEss, OpenemsComponent, ModbusComponent, ModbusSlave {
 
-    private static final int ACTIVE_POWER_OFFSET = 16384;
-
     private static final int MAX_APPARENT_POWER = 4600; //230V * 20A
+
+
+    int powerAddress = AddressList.BATTERY_POWER.getAddress();
+    int powerScaleFactorAddress = AddressList.BATTERY_POWER_SCALE_FACTOR.getAddress();
+
+    int powerTarget =  AddressList.BATTERY_POWER_TARGET.getAddress();
+    int timeout = AddressList.TIMEOUT.getAddress();
+    int controlMode = AddressList.CONTROL_MODE.getAddress();
+    int scaleFactorPowerTarget = AddressList.BATTERY_POWER_TARGET_SCALE_FACTOR.getAddress();
+    int maxPowerReference = AddressList.BATTERY_MAX_POWER_REFERENCE.getAddress();
+
 
     @Reference
     private ConfigurationAdmin cm;
@@ -75,8 +83,9 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
         super.setModbus(modbus);
     }
 
-    private final UnsignedWordElement activePowerElement = new UnsignedWordElement(41);
-    private final UnsignedWordElement operatingStateElement = new UnsignedWordElement(45);
+    private final SignedWordElement powerTargetElement = new SignedWordElement(powerTarget);
+    private final SignedWordElement timeoutElement = new SignedWordElement(timeout);
+    private final SignedWordElement controlModeElement = new SignedWordElement(controlMode);
 
     public SaxPowerImpl() {
         super(//
@@ -132,27 +141,25 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
         super.deactivate();
     }
 
+    private final ApplyScaleFactor applyScaleFactor = new ApplyScaleFactor();
+
     @Override
     protected ModbusProtocol defineModbusProtocol() {
-
         return new ModbusProtocol(this,
-                new FC3ReadRegistersTask(45, Priority.HIGH,
-
-                        m(SaxPower.ChannelId.OPERATING_STATE, this.operatingStateElement),
-
-                        m(SymmetricEss.ChannelId.SOC, new UnsignedWordElement(46)),
-
-                        m(activePowerChannelId(this.phase), new UnsignedWordElement(47),
-                                new ElementToChannelConverter(val -> {
-                                    if (val == null) {
-                                        return null;
-                                    }
-                                    return ((Number) val).intValue() - ACTIVE_POWER_OFFSET;
-                                })
-                        )
+                new FC3ReadRegistersTask(powerAddress, Priority.HIGH,
+                        m(SymmetricEss.ChannelId.ACTIVE_POWER, new SignedWordElement(powerAddress), applyScaleFactor.createScalingConverter(powerAddress)),
+                        m(SaxPower.ChannelId.POWER_SCALE_FACTOR, new SignedWordElement(powerScaleFactorAddress))
                 ),
 
-                new FC16WriteRegistersTask(41, m(SaxPower.ChannelId.ACTIVE_POWER_SET_POINT, this.activePowerElement))
+                new FC3ReadRegistersTask(powerTarget, Priority.HIGH,
+                        m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement, applyScaleFactor.createScalingConverter(powerTarget)),
+                        m(SaxPower.ChannelId.TIMEOUT, this.timeoutElement),
+                        m(SaxPower.ChannelId.CONTROL_MODE, this.controlModeElement),
+                        m(SaxPower.ChannelId.SCALEFACTOR_POWER_TARGET, new SignedWordElement(scaleFactorPowerTarget)),
+                        m(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, new SignedWordElement(maxPowerReference))
+                )
+
+                //new FC16WriteRegistersTask(powerTarget, m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement))
         );
     }
 
@@ -172,8 +179,6 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
 
         // Minimum write interval required by SAX battery (5 seconds)
         if (this.lastWrite == null || Duration.between(this.lastWrite, now).toMillis() > 5000) {
-            var setPoint = (int) TypeUtils.fitWithin(0, 0xFFFF, activePower + ACTIVE_POWER_OFFSET);
-            this.setActivePowerSetPoint(setPoint);
 
             this.lastWrite = now;
         }

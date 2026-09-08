@@ -23,15 +23,38 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
 
     enum ChannelId implements io.openems.edge.common.channel.ChannelId {
 
-        // Register 41
-        ACTIVE_POWER_SET_POINT(Doc.of(OpenemsType.INTEGER)
-                .accessMode(AccessMode.WRITE_ONLY)
-                .unit(Unit.WATT)
+        //Address 40030
+        POWER_SCALE_FACTOR(Doc.of(OpenemsType.INTEGER)
+                .accessMode(AccessMode.READ_ONLY)
         ),
 
-        // Register 45
-        OPERATING_STATE(Doc.of(OpenemsType.INTEGER)
+        //Address 40049
+        POWER_TARGET(Doc.of(OpenemsType.INTEGER)
+                .accessMode(AccessMode.READ_WRITE)
+                .unit(Unit.PERCENT)
+        ),
+
+        //Address 40050
+        TIMEOUT(Doc.of(OpenemsType.INTEGER)
+                .accessMode(AccessMode.READ_WRITE)
+                .unit(Unit.SECONDS)
+        ),
+
+        //Address 40051
+        CONTROL_MODE(Doc.of(OpenemsType.INTEGER)
+                .accessMode(AccessMode.READ_WRITE)
+                .unit(Unit.SECONDS)
+        ),
+
+        //Address 40052
+        SCALEFACTOR_POWER_TARGET(Doc.of(OpenemsType.INTEGER)
                 .accessMode(AccessMode.READ_ONLY)
+        ),
+
+        //Address 40053
+        REFERENCE_MAXIMUM_POWER(Doc.of(OpenemsType.INTEGER)
+                .accessMode(AccessMode.READ_ONLY)
+                .unit(Unit.WATT)
         );
 
         private final Doc doc;
@@ -47,7 +70,7 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
     }
 
     default WriteChannel<Integer> getActivePowerSetPointChannel() {
-        return this.channel(ChannelId.ACTIVE_POWER_SET_POINT);
+        return this.channel(ChannelId.POWER_TARGET);
     }
 
     default void setActivePowerSetPoint(Integer value) throws OpenemsError.OpenemsNamedException {
@@ -69,8 +92,8 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
      * @return the {@link ModbusSlaveNatureTable}
      */
     static ModbusSlaveNatureTable getModbusSlaveNatureTable(AccessMode accessMode) {
-        return ModbusSlaveNatureTable.of(SaxPower.class, accessMode, 41)
-                .channel(0, ChannelId.ACTIVE_POWER_SET_POINT, ModbusType.UINT16) // 41
+        return ModbusSlaveNatureTable.of(SaxPower.class, accessMode, 40049)
+                .channel(0, ChannelId.POWER_TARGET, ModbusType.UINT16) // 40049
                 .build();
     }
 }
