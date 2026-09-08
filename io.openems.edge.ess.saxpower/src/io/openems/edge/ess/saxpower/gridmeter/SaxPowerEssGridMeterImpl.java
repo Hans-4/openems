@@ -8,7 +8,7 @@ import io.openems.edge.bridge.modbus.api.AbstractOpenemsModbusComponent;
 import io.openems.edge.bridge.modbus.api.BridgeModbus;
 import io.openems.edge.bridge.modbus.api.ModbusComponent;
 import io.openems.edge.bridge.modbus.api.ModbusProtocol;
-import io.openems.edge.bridge.modbus.api.element.UnsignedWordElement;
+import io.openems.edge.bridge.modbus.api.element.SignedWordElement;
 import io.openems.edge.bridge.modbus.api.task.FC3ReadRegistersTask;
 import io.openems.edge.common.component.OpenemsComponent;
 import io.openems.edge.common.modbusslave.ModbusSlave;
@@ -29,9 +29,6 @@ import org.osgi.service.component.annotations.ReferencePolicy;
 import org.osgi.service.component.annotations.ReferencePolicyOption;
 import org.osgi.service.metatype.annotations.Designate;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Designate(ocd = Config.class, factory = true)
 @Component(//
         name = "Ess.SaxPower.Grid-Meter", //
@@ -41,8 +38,6 @@ import java.util.Map;
 @GenerateTargetsFromReferences("Modbus")
 public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
         implements SaxPowerEssGridMeter, ElectricityMeter, OpenemsComponent, ModbusComponent, ModbusSlave {
-
-    private final Map<Integer, Integer> scaleFactorValues = new HashMap<>();
 
     int gridPowerAddress = AddressList.GRID_POWER.getAddress();
     int gridPowerL1Address = AddressList.GRID_POWER_L1.getAddress();
@@ -64,7 +59,7 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
         super.setModbus(modbus);
     }
 
-    private final UnsignedWordElement gridPowerScaleFactor = new UnsignedWordElement(gridPowerScaleFactorAddress);
+    private final SignedWordElement gridPowerScaleFactor = new SignedWordElement(gridPowerScaleFactorAddress);
 
     public SaxPowerEssGridMeterImpl() {
         super(//
@@ -94,19 +89,17 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
         super.deactivate();
     }
 
-    ApplyScaleFactor applyScaleFactor = new ApplyScaleFactor(address -> this.scaleFactorValues.getOrDefault(address, 1));
+    private final ApplyScaleFactor applyScaleFactor = new ApplyScaleFactor();
 
     @Override
     protected ModbusProtocol defineModbusProtocol() {
         return new ModbusProtocol(this,
-                new FC3ReadRegistersTask(gridPowerScaleFactorAddress, Priority.HIGH,
-                        m(SaxPowerEssGridMeter.ChannelId.GRID_POWER_SCALE_FACTOR, this.gridPowerScaleFactor)
-                ),
                 new FC3ReadRegistersTask(gridPowerAddress, Priority.HIGH, //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER, new UnsignedWordElement(gridPowerAddress), applyScaleFactor.createScalingConverter(gridPowerAddress)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new UnsignedWordElement(gridPowerL1Address), applyScaleFactor.createScalingConverter(gridPowerL1Address)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new UnsignedWordElement(gridPowerL2Address), applyScaleFactor.createScalingConverter(gridPowerL2Address)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new UnsignedWordElement(gridPowerL3Address), applyScaleFactor.createScalingConverter(gridPowerL3Address))
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER, new SignedWordElement(gridPowerAddress), applyScaleFactor.createScalingConverter(gridPowerAddress)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new SignedWordElement(gridPowerL1Address), applyScaleFactor.createScalingConverter(gridPowerL1Address)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new SignedWordElement(gridPowerL2Address), applyScaleFactor.createScalingConverter(gridPowerL2Address)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new SignedWordElement(gridPowerL3Address), applyScaleFactor.createScalingConverter(gridPowerL3Address)), //
+                        m(SaxPowerEssGridMeter.ChannelId.GRID_POWER_SCALE_FACTOR, this.gridPowerScaleFactor)
                 )
         );
     }

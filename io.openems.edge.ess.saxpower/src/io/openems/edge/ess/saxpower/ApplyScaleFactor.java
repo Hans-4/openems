@@ -1,16 +1,9 @@
 package io.openems.edge.ess.saxpower;
 
 import io.openems.edge.bridge.modbus.api.ElementToChannelConverter;
-import java.util.function.Function;
 
 public class ApplyScaleFactor {
-    Scales scales = new Scales();
-
-    private final Function<Integer, Integer> getRegisterValue;
-
-    public ApplyScaleFactor(Function<Integer, Integer> getRegisterValue) {
-        this.getRegisterValue = getRegisterValue;
-    }
+    private final Scales scales = new Scales();
 
     public ElementToChannelConverter createScalingConverter(int dataRegisterAddress) {
         return new ElementToChannelConverter(val ->
@@ -33,19 +26,13 @@ public class ApplyScaleFactor {
         }
 
         if (scaleFactorRegisterAddress != null) {
-            int scaleFactorValue = this.getRegisterValue.apply(scaleFactorRegisterAddress);
-            int scaleFactor = (int) Math.pow(10, scaleFactorValue);
-            int scaledValue = value * scaleFactor;
-            return encode_int16(scaledValue);
-        }
-        return value;
-    }
+            int scaleFactor = this.scales.wellKnownScaleFactorMap.get(scaleFactorRegisterAddress);
 
-    private int encode_int16(int raw) {
-        if (raw > 32767) {
-            return raw - 65536;
-        } else {
-            return raw;
+            double finalScaleFactor = Math.pow(10, scaleFactor);
+            return (value * finalScaleFactor) * -1;
+        }
+        else {
+            return null;
         }
     }
 }
