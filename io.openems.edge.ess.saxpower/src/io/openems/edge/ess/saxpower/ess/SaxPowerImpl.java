@@ -7,7 +7,9 @@ import io.openems.edge.bridge.modbus.api.AbstractOpenemsModbusComponent;
 import io.openems.edge.bridge.modbus.api.BridgeModbus;
 import io.openems.edge.bridge.modbus.api.ModbusComponent;
 import io.openems.edge.bridge.modbus.api.ModbusProtocol;
+import io.openems.edge.bridge.modbus.api.element.DummyRegisterElement;
 import io.openems.edge.bridge.modbus.api.element.SignedWordElement;
+import io.openems.edge.bridge.modbus.api.element.UnsignedWordElement;
 import io.openems.edge.bridge.modbus.api.task.FC16WriteRegistersTask;
 import io.openems.edge.bridge.modbus.api.task.FC3ReadRegistersTask;
 import io.openems.edge.common.component.OpenemsComponent;
@@ -88,10 +90,6 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
         super.setModbus(modbus);
     }
 
-    private final SignedWordElement powerTargetElement = new SignedWordElement(this.powerTarget);
-    private final SignedWordElement timeoutElement = new SignedWordElement(this.timeout);
-    private final SignedWordElement controlModeElement = new SignedWordElement(this.controlMode);
-
     public SaxPowerImpl() {
         super(//
                 OpenemsComponent.ChannelId.values(), //
@@ -144,6 +142,7 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     @Override
     @Deactivate
     protected void deactivate() {
+        this.lastWrite = null;
         super.deactivate();
     }
 
@@ -153,26 +152,22 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     protected ModbusProtocol defineModbusProtocol() {
         return new ModbusProtocol(this,
                 new FC3ReadRegistersTask(this.powerAddress, Priority.HIGH,
-                        m(SymmetricEss.ChannelId.ACTIVE_POWER, new SignedWordElement(this.powerAddress), this.applyScaleFactor.createScalingConverter(this.powerAddress)),
-                        m(SaxPower.ChannelId.POWER_SCALE_FACTOR, new SignedWordElement(this.powerScaleFactorAddress))
-                ),
-
-                new FC3ReadRegistersTask(this.powerTarget, Priority.HIGH,
-                        m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement, this.applyScaleFactor.createScalingConverter(this.powerTarget)),
-                        m(SaxPower.ChannelId.TIMEOUT, this.timeoutElement),
-                        m(SaxPower.ChannelId.CONTROL_MODE, this.controlModeElement),
+                        m(SymmetricEss.ChannelId.ACTIVE_POWER, new SignedWordElement(this.powerAddress), this.applyScaleFactor.createScalingConverter(this.powerAddress, 1)),
+                        m(SaxPower.ChannelId.POWER_SCALE_FACTOR, new SignedWordElement(this.powerScaleFactorAddress)),
+                        new DummyRegisterElement(40031,40048),
+                        m(SaxPower.ChannelId.POWER_TARGET, new SignedWordElement(this.powerTarget), this.applyScaleFactor.createScalingConverter(this.powerTarget, 1)),
+                        m(SaxPower.ChannelId.TIMEOUT, new UnsignedWordElement(this.timeout)),
+                        m(SaxPower.ChannelId.CONTROL_MODE,  new UnsignedWordElement(this.controlMode)),
                         m(SaxPower.ChannelId.SCALEFACTOR_POWER_TARGET, new SignedWordElement(this.scaleFactorPowerTarget)),
-                        m(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, new SignedWordElement(this.maxPowerReference))
-                ),
-
-                new FC3ReadRegistersTask(this.currentSoc, Priority.HIGH,
+                        m(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, new UnsignedWordElement(this.maxPowerReference)),
+                        new DummyRegisterElement(40054, 40101),
                         m(SymmetricEss.ChannelId.SOC, new SignedWordElement(this.currentSoc))
                 ),
 
                 new FC16WriteRegistersTask(this.powerTarget,
-                        m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement),
-                        m(SaxPower.ChannelId.TIMEOUT, this.timeoutElement),
-                        m(SaxPower.ChannelId.CONTROL_MODE, this.controlModeElement)
+                        m(SaxPower.ChannelId.POWER_TARGET, new SignedWordElement(this.powerTarget)),
+                        m(SaxPower.ChannelId.TIMEOUT, new UnsignedWordElement(this.timeout)),
+                        m(SaxPower.ChannelId.CONTROL_MODE, new UnsignedWordElement(this.controlMode))
                 )
         );
     }
@@ -191,14 +186,21 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     public void applyPower(int activePower, int reactivePower) throws OpenemsError.OpenemsNamedException {
         final var now = Instant.now();
 
-        // Minimum write interval required by SAX battery (5 seconds)
-        if (this.lastWrite == null || Duration.between(this.lastWrite, now).toMillis() > 5000) {
+        // Recommend write interval 500 ms
+        if (this.lastWrite == null || Duration.between(this.lastWrite, now).toMillis() > 500) {
 
             this.controlModeHandler.check();
 
-            int percent = activePower * 100 / 4600;
-            var setPoint = (int) TypeUtils.fitWithin(0, 0xFFFF, percent);
+            final var maxPowerReferenceValue = this.getReferenceMaximumPower().get();
+            if (maxPowerReferenceValue == null || maxPowerReferenceValue <= 0) {
+                return;
+            }
+            final int maxPowerReference = maxPowerReferenceValue;
+
+            int percent = activePower * 1000 / maxPowerReference;
+            var setPoint = (int) TypeUtils.fitWithin(-10000, 10000, percent);
             setPowerTarget(setPoint);
+
             this.lastWrite = now;
         }
     }

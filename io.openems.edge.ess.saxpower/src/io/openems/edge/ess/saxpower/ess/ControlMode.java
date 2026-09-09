@@ -8,9 +8,9 @@ public class ControlMode {
     private final int timeout;
 
     public ControlMode(SaxPower ess, int controlMode, int timeout) {
-        this.ess = ess; //
-        this.controlMode = controlMode; //
-        this.timeout = timeout; //
+        this.ess = ess;
+        this.controlMode = controlMode;
+        this.timeout = timeout;
     }
 
     /**

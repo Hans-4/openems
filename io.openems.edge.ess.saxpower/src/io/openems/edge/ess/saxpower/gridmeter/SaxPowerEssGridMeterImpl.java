@@ -48,6 +48,8 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
     @Reference
     private ConfigurationAdmin cm;
 
+    private MeterType meterType = MeterType.GRID;
+
     @Override
     @Reference(//
             name = "Modbus", //
@@ -80,6 +82,8 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
 
     @Activate
     private void activate(ComponentContext context, Config config) throws OpenemsError.OpenemsNamedException {
+        this.meterType = config.type();
+
         super.activate(context, config.id(), config.alias(), config.enabled(), config.modbusUnitId(), this.cm, "Modbus", config.modbus_id());
     }
 
@@ -95,10 +99,10 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
     protected ModbusProtocol defineModbusProtocol() {
         return new ModbusProtocol(this,
                 new FC3ReadRegistersTask(this.gridPowerAddress, Priority.HIGH, //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER, new SignedWordElement(this.gridPowerAddress), this.applyScaleFactor.createScalingConverter(this.gridPowerAddress)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new SignedWordElement(this.gridPowerL1Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL1Address)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new SignedWordElement(this.gridPowerL2Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL2Address)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new SignedWordElement(this.gridPowerL3Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL3Address)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER, new SignedWordElement(this.gridPowerAddress), this.applyScaleFactor.createScalingConverter(this.gridPowerAddress, -1)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new SignedWordElement(this.gridPowerL1Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL1Address, -1)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new SignedWordElement(this.gridPowerL2Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL2Address, -1)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new SignedWordElement(this.gridPowerL3Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL3Address, -1)), //
                         m(SaxPowerEssGridMeter.ChannelId.GRID_POWER_SCALE_FACTOR, this.gridPowerScaleFactor)
                 )
         );
@@ -111,6 +115,6 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
 
     @Override
     public MeterType getMeterType() {
-        return MeterType.GRID;
+        return this.meterType;
     }
 }

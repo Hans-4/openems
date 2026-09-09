@@ -9,15 +9,16 @@ public class ApplyScaleFactor {
      * Creates a scaling converter for the given data register address.
      *
      * @param dataRegisterAddress the address of the data register
+     * @param multiplier the number the value gets multiplied with
      * @return the ElementToChannelConverter
      */
-    public ElementToChannelConverter createScalingConverter(int dataRegisterAddress) {
+    public ElementToChannelConverter createScalingConverter(int dataRegisterAddress, int multiplier) {
         return new ElementToChannelConverter(
-                val -> this.channelConverter(val, dataRegisterAddress),
+                val -> this.channelConverter(val, dataRegisterAddress, multiplier),
                 val -> val);
     }
 
-    private Object channelConverter(Object val, int dataRegisterAddress) {
+    private Object channelConverter(Object val, int dataRegisterAddress, int multiplier) {
         if (val == null) {
             return null;
         }
@@ -35,7 +36,7 @@ public class ApplyScaleFactor {
             int scaleFactor = this.scales.getWellKnownScaleFactorMap().get(scaleFactorRegisterAddress);
 
             double finalScaleFactor = Math.pow(10, scaleFactor);
-            return (value * finalScaleFactor) * -1;
+            return (value * finalScaleFactor) * multiplier;
         } else {
             return null;
         }

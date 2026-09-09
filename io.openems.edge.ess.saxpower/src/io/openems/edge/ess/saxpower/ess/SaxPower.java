@@ -5,6 +5,7 @@ import io.openems.common.channel.Unit;
 import io.openems.common.exceptions.OpenemsError;
 import io.openems.common.types.OpenemsType;
 import io.openems.edge.bridge.modbus.api.ModbusComponent;
+import io.openems.edge.common.channel.Channel;
 import io.openems.edge.common.channel.Doc;
 import io.openems.edge.common.channel.WriteChannel;
 import io.openems.edge.common.channel.value.Value;
@@ -42,7 +43,6 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
         //Address 40051
         CONTROL_MODE(Doc.of(OpenemsType.INTEGER)
                 .accessMode(AccessMode.READ_WRITE)
-                .unit(Unit.SECONDS)
         ),
 
         //Address 40052
@@ -143,6 +143,26 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
     default void setControlMode(Integer value) throws OpenemsError.OpenemsNamedException {
         this.getControlModeChannel().setNextWriteValue(value);
     }
+
+    /**
+     * Gets the Channel for {@link ChannelId#REFERENCE_MAXIMUM_POWER}.
+     *
+     * @return the Channel
+     */
+    default Channel<Integer> getReferenceMaximumPowerChannel() {
+        return this.channel(ChannelId.REFERENCE_MAXIMUM_POWER);
+    }
+
+    /**
+     * Gets the reference value for 100 % power in [W].
+     * See {@link ChannelId#REFERENCE_MAXIMUM_POWER}.
+     *
+     * @return the Channel {@link Value}
+     */
+    default Value<Integer> getReferenceMaximumPower() {
+        return this.getReferenceMaximumPowerChannel().value();
+    }
+
 
     @Override
     default void applyPower(int activePowerL1, int reactivePowerL1, int activePowerL2, int reactivePowerL2,
