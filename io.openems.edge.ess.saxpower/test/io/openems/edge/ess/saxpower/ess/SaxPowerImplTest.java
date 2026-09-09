@@ -102,28 +102,30 @@ public class SaxPowerImplTest {
                         .setModbusUnitId(100)
                         .setCapacity(7000)
                         .build()
+                )
+                .next(new TestCase()
+                        .input(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, 4600)
                 );
-
         var lastWriteField = SaxPowerImpl.class.getDeclaredField("lastWrite");
         lastWriteField.setAccessible(true);
 
         sut.applyPower(1000, 0);
         assertEquals(
-                Integer.valueOf(21),
+                Integer.valueOf(217),
                 sut.getTargetPowerChannel().getNextWriteValue().orElse(null)
         );
 
         lastWriteField.set(sut, Instant.now());
         sut.applyPower(2000, 0);
         assertEquals(
-                Integer.valueOf(21),
+                Integer.valueOf(217),
                 sut.getTargetPowerChannel().getNextWriteValue().orElse(null)
         );
 
         lastWriteField.set(sut, Instant.now().minusSeconds(6));
         sut.applyPower(-1000, 0);
         assertEquals(
-                Integer.valueOf(0),
+                Integer.valueOf(-217),
                 sut.getTargetPowerChannel().getNextWriteValue().orElse(null)
         );
 
