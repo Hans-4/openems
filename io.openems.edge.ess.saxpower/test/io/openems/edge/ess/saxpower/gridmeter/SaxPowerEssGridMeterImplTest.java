@@ -6,15 +6,13 @@ import io.openems.edge.bridge.modbus.api.ModbusProtocol;
 import io.openems.edge.bridge.modbus.api.task.FC3ReadRegistersTask;
 import io.openems.edge.bridge.modbus.api.task.Task;
 import io.openems.edge.bridge.modbus.test.DummyModbusBridge;
-import io.openems.edge.common.channel.Doc;
 import io.openems.edge.common.taskmanager.Priority;
 import io.openems.edge.common.test.AbstractComponentTest;
 import io.openems.edge.common.test.ComponentTest;
-import io.openems.edge.ess.api.SymmetricEss;
+import io.openems.edge.meter.api.ElectricityMeter;
 import org.junit.Test;
 import java.util.List;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class SaxPowerEssGridMeterImplTest {
@@ -28,7 +26,7 @@ public class SaxPowerEssGridMeterImplTest {
                         .setId("ess0")
                         .setModbusId("modbus0")
                         .setType(MeterType.GRID)
-                        .setModbusUnitId(64)
+                        .setModbusUnitId(100)
                         .build()
                 )
                 .next(new AbstractComponentTest.TestCase())
@@ -45,7 +43,7 @@ public class SaxPowerEssGridMeterImplTest {
                         .setId("ess0")
                         .setModbusId("modbus0")
                         .setType(MeterType.GRID)
-                        .setModbusUnitId(64)
+                        .setModbusUnitId(100)
                         .build()
                 );
 
@@ -61,7 +59,7 @@ public class SaxPowerEssGridMeterImplTest {
                 .findFirst()
                 .orElseThrow();
 
-        assertEquals(48, readTask.getStartAddress());
+        assertEquals(40072, readTask.getStartAddress());
         assertEquals(Priority.HIGH, readTask.getPriority());
 
         sut.deactivate();
@@ -77,23 +75,20 @@ public class SaxPowerEssGridMeterImplTest {
                         .setId("ess0")
                         .setModbusId("modbus0")
                         .setType(MeterType.GRID)
-                        .setModbusUnitId(64)
+                        .setModbusUnitId(100)
                         .build()
                 )
 
                 .next(new AbstractComponentTest.TestCase()
-                        .input(SymmetricEss.ChannelId.ACTIVE_POWER, 1500)
+                        .input(ElectricityMeter.ChannelId.ACTIVE_POWER, 1500)
+                        .input(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, 500)
+                        .input(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, 500)
+                        .input(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, 500)
                 );
 
         String log = sut.debugLog();
-        assertEquals("L:1500 W", log);
+        assertEquals("L:1500 W|L1:500 W|L2:500 W|L3:500 W", log);
 
         sut.deactivate();
-    }
-
-    @Test
-    public void testChannelIdDoc() {
-        Doc doc = SaxPowerEssGridMeter.ChannelId.TEST_DUMMY.doc();
-        assertNotNull(doc);
     }
 }

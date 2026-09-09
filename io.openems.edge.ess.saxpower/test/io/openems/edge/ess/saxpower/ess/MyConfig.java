@@ -17,6 +17,7 @@ public class MyConfig extends AbstractComponentConfig implements Config {
         private int maxChargePower;
         private int maxDischargePower;
         private int minSoc;
+        private int timeout;
 
         private Builder() {
         }
@@ -68,6 +69,11 @@ public class MyConfig extends AbstractComponentConfig implements Config {
 
         public Builder setMinSoc(int minSoc) {
             this.minSoc = minSoc;
+            return this;
+        }
+
+        public Builder setTimeout(int timeout) {
+            this.timeout = timeout;
             return this;
         }
 
@@ -135,5 +141,10 @@ public class MyConfig extends AbstractComponentConfig implements Config {
     @Override
     public int minSoc() {
         return this.builder.minSoc;
+    }
+
+    @Override
+    public int timeout() {
+        return this.builder.timeout;
     }
 }
