@@ -11,12 +11,18 @@ public class RegisterRange {
         this.scale = scale;
     }
 
+    /**
+     * Checks if the given address is within this range.
+     *
+     * @param address the address to check
+     * @return true if the address is within the range
+     */
     public boolean contains(int address) {
-        return address >= start && address <= end;
+        return address >= this.start && address <= this.end;
     }
 
 
     public int getScaleFactorRegisterAddress() {
-        return scale;
+        return this.scale;
     }
 }

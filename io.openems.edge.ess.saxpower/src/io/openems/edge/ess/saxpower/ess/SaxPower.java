@@ -102,7 +102,7 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
      *
      * @return the Channel {@link Value}
      */
-    public default Value<Integer> getTimeout() throws OpenemsError.OpenemsNamedException {
+    default Value<Integer> getTimeout() {
         return this.getTimeoutChannel().value();
     }
 
@@ -130,7 +130,7 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
      *
      * @return the Channel {@link Value}
      */
-    public default Value<Integer> getControlMode() throws OpenemsError.OpenemsNamedException {
+    default Value<Integer> getControlMode() {
         return this.getControlModeChannel().value();
     }
 

@@ -8,11 +8,14 @@ public class ControlMode {
     private final int timeout;
 
     public ControlMode(SaxPower ess, int controlMode, int timeout) {
-        this.ess = ess;
-        this.controlMode = controlMode;
-        this.timeout = timeout;
+        this.ess = ess; //
+        this.controlMode = controlMode; //
+        this.timeout = timeout; //
     }
 
+    /**
+     * Checks if control mode is 1 and sets it to 1 if not.
+     */
     public void check() throws OpenemsError.OpenemsNamedException {
         Integer actualMode = this.ess.getControlMode().get();
         Integer actualTimeout = this.ess.getTimeout().get();

@@ -48,7 +48,7 @@ public @interface Config {
     @AttributeDefinition(name = "Min SoC [%]", description = "Discharging is blocked while State of Charge is below Min-SoC.")
     int minSoc() default 15;
 
-    @AttributeDefinition(name = "Timeout", description = "")
+    @AttributeDefinition(name = "Timeout", description = "Time after the battery switches to normal mode")
     int timeout() default 60;
 
     String webconsole_configurationFactory_nameHint() default "SAX Power ESS [{id}]";

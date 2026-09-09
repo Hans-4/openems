@@ -39,11 +39,11 @@ import org.osgi.service.metatype.annotations.Designate;
 public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
         implements SaxPowerEssGridMeter, ElectricityMeter, OpenemsComponent, ModbusComponent, ModbusSlave {
 
-    int gridPowerAddress = AddressList.GRID_POWER.getAddress();
-    int gridPowerL1Address = AddressList.GRID_POWER_L1.getAddress();
-    int gridPowerL2Address = AddressList.GRID_POWER_L2.getAddress();
-    int gridPowerL3Address = AddressList.GRID_POWER_L3.getAddress();
-    int gridPowerScaleFactorAddress = AddressList.GRID_POWER_SCALE_FACTOR.getAddress();
+    private final int gridPowerAddress = AddressList.GRID_POWER.getAddress();
+    private final int gridPowerL1Address = AddressList.GRID_POWER_L1.getAddress();
+    private final int gridPowerL2Address = AddressList.GRID_POWER_L2.getAddress();
+    private final int gridPowerL3Address = AddressList.GRID_POWER_L3.getAddress();
+    private final int gridPowerScaleFactorAddress = AddressList.GRID_POWER_SCALE_FACTOR.getAddress();
 
     @Reference
     private ConfigurationAdmin cm;
@@ -59,7 +59,7 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
         super.setModbus(modbus);
     }
 
-    private final SignedWordElement gridPowerScaleFactor = new SignedWordElement(gridPowerScaleFactorAddress);
+    private final SignedWordElement gridPowerScaleFactor = new SignedWordElement(this.gridPowerScaleFactorAddress);
 
     public SaxPowerEssGridMeterImpl() {
         super(//
@@ -94,11 +94,11 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
     @Override
     protected ModbusProtocol defineModbusProtocol() {
         return new ModbusProtocol(this,
-                new FC3ReadRegistersTask(gridPowerAddress, Priority.HIGH, //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER, new SignedWordElement(gridPowerAddress), applyScaleFactor.createScalingConverter(gridPowerAddress)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new SignedWordElement(gridPowerL1Address), applyScaleFactor.createScalingConverter(gridPowerL1Address)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new SignedWordElement(gridPowerL2Address), applyScaleFactor.createScalingConverter(gridPowerL2Address)), //
-                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new SignedWordElement(gridPowerL3Address), applyScaleFactor.createScalingConverter(gridPowerL3Address)), //
+                new FC3ReadRegistersTask(this.gridPowerAddress, Priority.HIGH, //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER, new SignedWordElement(this.gridPowerAddress), this.applyScaleFactor.createScalingConverter(this.gridPowerAddress)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new SignedWordElement(this.gridPowerL1Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL1Address)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new SignedWordElement(this.gridPowerL2Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL2Address)), //
+                        m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new SignedWordElement(this.gridPowerL3Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL3Address)), //
                         m(SaxPowerEssGridMeter.ChannelId.GRID_POWER_SCALE_FACTOR, this.gridPowerScaleFactor)
                 )
         );

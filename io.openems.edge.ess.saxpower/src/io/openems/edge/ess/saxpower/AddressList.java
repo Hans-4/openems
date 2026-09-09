@@ -25,6 +25,6 @@ public enum AddressList {
     }
 
     public int getAddress() {
-        return address;
+        return this.address;
     }
 }

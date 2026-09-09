@@ -34,8 +34,6 @@ import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.Designate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -58,16 +56,16 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     private static final int MAX_APPARENT_POWER = 4600; //230V * 20A
 
 
-    int powerAddress = AddressList.BATTERY_POWER.getAddress();
-    int powerScaleFactorAddress = AddressList.BATTERY_POWER_SCALE_FACTOR.getAddress();
+    private final int powerAddress = AddressList.BATTERY_POWER.getAddress();
+    private final int powerScaleFactorAddress = AddressList.BATTERY_POWER_SCALE_FACTOR.getAddress();
 
-    int powerTarget =  AddressList.BATTERY_POWER_TARGET.getAddress();
-    int timeout = AddressList.TIMEOUT.getAddress();
-    int controlMode = AddressList.CONTROL_MODE.getAddress();
-    int scaleFactorPowerTarget = AddressList.BATTERY_POWER_TARGET_SCALE_FACTOR.getAddress();
-    int maxPowerReference = AddressList.BATTERY_MAX_POWER_REFERENCE.getAddress();
+    private final int powerTarget =  AddressList.BATTERY_POWER_TARGET.getAddress();
+    private final int timeout = AddressList.TIMEOUT.getAddress();
+    private final int controlMode = AddressList.CONTROL_MODE.getAddress();
+    private final int scaleFactorPowerTarget = AddressList.BATTERY_POWER_TARGET_SCALE_FACTOR.getAddress();
+    private final int maxPowerReference = AddressList.BATTERY_MAX_POWER_REFERENCE.getAddress();
 
-    int currentSoc = AddressList.CURRENT_SOC.getAddress();
+    private final int currentSoc = AddressList.CURRENT_SOC.getAddress();
 
 
     @Reference
@@ -76,8 +74,6 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     private Power power;
 
     private Config config;
-
-    private SinglePhase phase;
 
     private ControlMode controlModeHandler;
 
@@ -92,9 +88,9 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
         super.setModbus(modbus);
     }
 
-    private final SignedWordElement powerTargetElement = new SignedWordElement(powerTarget);
-    private final SignedWordElement timeoutElement = new SignedWordElement(timeout);
-    private final SignedWordElement controlModeElement = new SignedWordElement(controlMode);
+    private final SignedWordElement powerTargetElement = new SignedWordElement(this.powerTarget);
+    private final SignedWordElement timeoutElement = new SignedWordElement(this.timeout);
+    private final SignedWordElement controlModeElement = new SignedWordElement(this.controlMode);
 
     public SaxPowerImpl() {
         super(//
@@ -113,7 +109,7 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     @Activate
     private void activate(ComponentContext context, Config config) throws OpenemsError.OpenemsNamedException {
         this.config = config;
-        this.phase = config.phase();
+        SinglePhase phase = config.phase();
 
         if (super.activate(context, config.id(), config.alias(), config.enabled(), config.modbusUnitId(), this.cm, //
                 "Modbus", config.modbus_id())) {
@@ -122,7 +118,7 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
 
         this.controlModeHandler = new ControlMode(this, 1, config.timeout());
 
-        SinglePhaseEss.initializeCopyPhaseChannel(this, this.phase);
+        SinglePhaseEss.initializeCopyPhaseChannel(this, phase);
 
         this._setCapacity(this.config.capacity());
         this._setMaxApparentPower(MAX_APPARENT_POWER);
@@ -156,24 +152,24 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     @Override
     protected ModbusProtocol defineModbusProtocol() {
         return new ModbusProtocol(this,
-                new FC3ReadRegistersTask(powerAddress, Priority.HIGH,
-                        m(SymmetricEss.ChannelId.ACTIVE_POWER, new SignedWordElement(powerAddress), applyScaleFactor.createScalingConverter(powerAddress)),
-                        m(SaxPower.ChannelId.POWER_SCALE_FACTOR, new SignedWordElement(powerScaleFactorAddress))
+                new FC3ReadRegistersTask(this.powerAddress, Priority.HIGH,
+                        m(SymmetricEss.ChannelId.ACTIVE_POWER, new SignedWordElement(this.powerAddress), this.applyScaleFactor.createScalingConverter(this.powerAddress)),
+                        m(SaxPower.ChannelId.POWER_SCALE_FACTOR, new SignedWordElement(this.powerScaleFactorAddress))
                 ),
 
-                new FC3ReadRegistersTask(powerTarget, Priority.HIGH,
-                        m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement, applyScaleFactor.createScalingConverter(powerTarget)),
+                new FC3ReadRegistersTask(this.powerTarget, Priority.HIGH,
+                        m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement, this.applyScaleFactor.createScalingConverter(this.powerTarget)),
                         m(SaxPower.ChannelId.TIMEOUT, this.timeoutElement),
                         m(SaxPower.ChannelId.CONTROL_MODE, this.controlModeElement),
-                        m(SaxPower.ChannelId.SCALEFACTOR_POWER_TARGET, new SignedWordElement(scaleFactorPowerTarget)),
-                        m(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, new SignedWordElement(maxPowerReference))
+                        m(SaxPower.ChannelId.SCALEFACTOR_POWER_TARGET, new SignedWordElement(this.scaleFactorPowerTarget)),
+                        m(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, new SignedWordElement(this.maxPowerReference))
                 ),
 
-                new FC3ReadRegistersTask(currentSoc, Priority.HIGH,
-                        m(SymmetricEss.ChannelId.SOC, new SignedWordElement(currentSoc))
+                new FC3ReadRegistersTask(this.currentSoc, Priority.HIGH,
+                        m(SymmetricEss.ChannelId.SOC, new SignedWordElement(this.currentSoc))
                 ),
 
-                new FC16WriteRegistersTask(powerTarget,
+                new FC16WriteRegistersTask(this.powerTarget,
                         m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement),
                         m(SaxPower.ChannelId.TIMEOUT, this.timeoutElement),
                         m(SaxPower.ChannelId.CONTROL_MODE, this.controlModeElement)
