@@ -14,7 +14,9 @@ public enum AddressList {
     GRID_POWER_L1(40073),
     GRID_POWER_L2(40074),
     GRID_POWER_L3(40075),
-    GRID_POWER_SCALE_FACTOR(40076);
+    GRID_POWER_SCALE_FACTOR(40076),
+
+    CURRENT_SOC(40102);
 
     private final int address;
 

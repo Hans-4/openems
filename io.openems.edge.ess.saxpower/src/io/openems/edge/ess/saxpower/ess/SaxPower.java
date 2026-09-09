@@ -7,6 +7,7 @@ import io.openems.common.types.OpenemsType;
 import io.openems.edge.bridge.modbus.api.ModbusComponent;
 import io.openems.edge.common.channel.Doc;
 import io.openems.edge.common.channel.WriteChannel;
+import io.openems.edge.common.channel.value.Value;
 import io.openems.edge.common.component.OpenemsComponent;
 import io.openems.edge.common.modbusslave.ModbusSlave;
 import io.openems.edge.common.modbusslave.ModbusSlaveNatureTable;
@@ -69,12 +70,80 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
         }
     }
 
-    default WriteChannel<Integer> getActivePowerSetPointChannel() {
+
+    /**
+     * Gets the Channel for {@link ChannelId#POWER_TARGET}.
+     *
+     * @return the Channel
+     */
+    default WriteChannel<Integer> getTargetPowerChannel() {
         return this.channel(ChannelId.POWER_TARGET);
     }
 
-    default void setActivePowerSetPoint(Integer value) throws OpenemsError.OpenemsNamedException {
-        this.getActivePowerSetPointChannel().setNextWriteValue(value);
+    /**
+     * Set the Power Target. See {@link ChannelId#POWER_TARGET}.
+     *
+     * @param value the next value
+     * @throws OpenemsError.OpenemsNamedException on error
+     */
+    default void setPowerTarget(Integer value) throws OpenemsError.OpenemsNamedException {
+        this.getTargetPowerChannel().setNextWriteValue(value);
+    }
+
+    /**
+     * Gets the Channel for {@link ChannelId#TIMEOUT}.
+     *
+     * @return the Channel
+     */
+    default WriteChannel<Integer> getTimeoutChannel() {
+        return this.channel(ChannelId.TIMEOUT);
+    }
+
+    /**
+     * Gets the Timeout. See {@link ChannelId#TIMEOUT}.
+     *
+     * @return the Channel {@link Value}
+     */
+    public default Value<Integer> getTimeout() throws OpenemsError.OpenemsNamedException {
+        return this.getTimeoutChannel().value();
+    }
+
+    /**
+     * Set the Timeout. See {@link ChannelId#TIMEOUT}.
+     *
+     * @param value the next value
+     * @throws OpenemsError.OpenemsNamedException on error
+     */
+    default void setTimeout(Integer value) throws OpenemsError.OpenemsNamedException {
+        this.getTimeoutChannel().setNextWriteValue(value);
+    }
+
+    /**
+     * Gets the Channel for {@link ChannelId#CONTROL_MODE}.
+     *
+     * @return the Channel
+     */
+    default WriteChannel<Integer> getControlModeChannel() {
+        return this.channel(ChannelId.CONTROL_MODE);
+    }
+
+    /**
+     * Gets the Control Mode. See {@link ChannelId#CONTROL_MODE}.
+     *
+     * @return the Channel {@link Value}
+     */
+    public default Value<Integer> getControlMode() throws OpenemsError.OpenemsNamedException {
+        return this.getControlModeChannel().value();
+    }
+
+    /**
+     * Set the Control Mode. See {@link ChannelId#CONTROL_MODE}.
+     *
+     * @param value the next value
+     * @throws OpenemsError.OpenemsNamedException on error
+     */
+    default void setControlMode(Integer value) throws OpenemsError.OpenemsNamedException {
+        this.getControlModeChannel().setNextWriteValue(value);
     }
 
     @Override
@@ -92,8 +161,13 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
      * @return the {@link ModbusSlaveNatureTable}
      */
     static ModbusSlaveNatureTable getModbusSlaveNatureTable(AccessMode accessMode) {
-        return ModbusSlaveNatureTable.of(SaxPower.class, accessMode, 40049)
-                .channel(0, ChannelId.POWER_TARGET, ModbusType.UINT16) // 40049
+        return ModbusSlaveNatureTable.of(SaxPower.class, accessMode, 40030)
+                .channel(0, ChannelId.POWER_SCALE_FACTOR, ModbusType.INT16) // 40030
+                .channel(19, ChannelId.POWER_TARGET, ModbusType.UINT16) // 40049
+                .channel(20, ChannelId.TIMEOUT, ModbusType.UINT16) // 40050
+                .channel(21, ChannelId.CONTROL_MODE, ModbusType.UINT16) // 40051
+                .channel(22, ChannelId.SCALEFACTOR_POWER_TARGET, ModbusType.INT16) // 40052
+                .channel(23, ChannelId.REFERENCE_MAXIMUM_POWER, ModbusType.UINT16) // 40053
                 .build();
     }
 }

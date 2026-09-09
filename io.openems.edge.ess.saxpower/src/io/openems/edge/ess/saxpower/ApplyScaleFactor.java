@@ -6,9 +6,9 @@ public class ApplyScaleFactor {
     private final Scales scales = new Scales();
 
     public ElementToChannelConverter createScalingConverter(int dataRegisterAddress) {
-        return new ElementToChannelConverter(val ->
-                this.channelConverter(val, dataRegisterAddress)
-        );
+        return new ElementToChannelConverter(
+                val ->this.channelConverter(val, dataRegisterAddress),
+                val -> val);
     }
 
     private Object channelConverter(Object val, int dataRegisterAddress) {

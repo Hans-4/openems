@@ -8,12 +8,14 @@ import io.openems.edge.bridge.modbus.api.BridgeModbus;
 import io.openems.edge.bridge.modbus.api.ModbusComponent;
 import io.openems.edge.bridge.modbus.api.ModbusProtocol;
 import io.openems.edge.bridge.modbus.api.element.SignedWordElement;
+import io.openems.edge.bridge.modbus.api.task.FC16WriteRegistersTask;
 import io.openems.edge.bridge.modbus.api.task.FC3ReadRegistersTask;
 import io.openems.edge.common.component.OpenemsComponent;
 import io.openems.edge.common.modbusslave.ModbusSlave;
 import io.openems.edge.common.modbusslave.ModbusSlaveTable;
 import io.openems.edge.common.taskmanager.Priority;
 import io.openems.edge.common.type.Phase.SinglePhase;
+import io.openems.edge.common.type.TypeUtils;
 import io.openems.edge.ess.api.AsymmetricEss;
 import io.openems.edge.ess.api.ManagedAsymmetricEss;
 import io.openems.edge.ess.api.ManagedSinglePhaseEss;
@@ -32,6 +34,9 @@ import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.Designate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.time.Instant;
 
@@ -62,6 +67,8 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     int scaleFactorPowerTarget = AddressList.BATTERY_POWER_TARGET_SCALE_FACTOR.getAddress();
     int maxPowerReference = AddressList.BATTERY_MAX_POWER_REFERENCE.getAddress();
 
+    int currentSoc = AddressList.CURRENT_SOC.getAddress();
+
 
     @Reference
     private ConfigurationAdmin cm;
@@ -71,6 +78,10 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     private Config config;
 
     private SinglePhase phase;
+
+    private ControlMode controlModeHandler;
+
+    private final Logger log = LoggerFactory.getLogger(SaxPowerImpl.class);
 
     @Override
     @Reference(//
@@ -111,6 +122,8 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
             return;
         }
 
+        this.controlModeHandler = new ControlMode(this, 1, config.timeout());
+
         SinglePhaseEss.initializeCopyPhaseChannel(this, this.phase);
 
         this._setCapacity(this.config.capacity());
@@ -134,7 +147,6 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
         });
     }
 
-
     @Override
     @Deactivate
     protected void deactivate() {
@@ -157,9 +169,17 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
                         m(SaxPower.ChannelId.CONTROL_MODE, this.controlModeElement),
                         m(SaxPower.ChannelId.SCALEFACTOR_POWER_TARGET, new SignedWordElement(scaleFactorPowerTarget)),
                         m(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, new SignedWordElement(maxPowerReference))
-                )
+                ),
 
-                //new FC16WriteRegistersTask(powerTarget, m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement))
+                new FC3ReadRegistersTask(currentSoc, Priority.HIGH,
+                        m(SymmetricEss.ChannelId.SOC, new SignedWordElement(currentSoc))
+                ),
+
+                new FC16WriteRegistersTask(powerTarget,
+                        m(SaxPower.ChannelId.POWER_TARGET, this.powerTargetElement),
+                        m(SaxPower.ChannelId.TIMEOUT, this.timeoutElement),
+                        m(SaxPower.ChannelId.CONTROL_MODE, this.controlModeElement)
+                )
         );
     }
 
@@ -180,6 +200,11 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
         // Minimum write interval required by SAX battery (5 seconds)
         if (this.lastWrite == null || Duration.between(this.lastWrite, now).toMillis() > 5000) {
 
+            this.controlModeHandler.check();
+
+            int percent = activePower * 100 / 4600;
+            var setPoint = (int) TypeUtils.fitWithin(0, 0xFFFF, percent);
+            setPowerTarget(setPoint);
             this.lastWrite = now;
         }
     }
@@ -214,6 +239,10 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
 
     @Override
     public String debugLog() {
-        return "SoC:" + this.getSoc().asString() + "|L:" + this.getActivePower().asString();
+        try {
+            return "SoC:" + this.getSoc().asString() + "|L:" + this.getActivePower().asString() + "|C:" + this.getControlMode().asString();
+        } catch (OpenemsError.OpenemsNamedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
