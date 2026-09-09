@@ -10,8 +10,6 @@ import io.openems.edge.common.channel.WriteChannel;
 import io.openems.edge.common.channel.value.Value;
 import io.openems.edge.common.component.OpenemsComponent;
 import io.openems.edge.common.modbusslave.ModbusSlave;
-import io.openems.edge.common.modbusslave.ModbusSlaveNatureTable;
-import io.openems.edge.common.modbusslave.ModbusType;
 import io.openems.edge.ess.api.AsymmetricEss;
 import io.openems.edge.ess.api.ManagedAsymmetricEss;
 import io.openems.edge.ess.api.ManagedSinglePhaseEss;
@@ -151,23 +149,5 @@ public interface SaxPower extends ManagedSinglePhaseEss, ManagedAsymmetricEss, M
             int activePowerL3, int reactivePowerL3) throws OpenemsError.OpenemsNamedException {
         ManagedSinglePhaseEss.super.applyPower(activePowerL1, reactivePowerL1, activePowerL2, reactivePowerL2,
                 activePowerL3, reactivePowerL3);
-    }
-
-    /**
-     * Used for Modbus/TCP Api Controller. Provides a Modbus table for the Channels
-     * of this Component.
-     *
-     * @param accessMode filters the Modbus-Records that should be shown
-     * @return the {@link ModbusSlaveNatureTable}
-     */
-    static ModbusSlaveNatureTable getModbusSlaveNatureTable(AccessMode accessMode) {
-        return ModbusSlaveNatureTable.of(SaxPower.class, accessMode, 40030)
-                .channel(0, ChannelId.POWER_SCALE_FACTOR, ModbusType.INT16) // 40030
-                .channel(19, ChannelId.POWER_TARGET, ModbusType.UINT16) // 40049
-                .channel(20, ChannelId.TIMEOUT, ModbusType.UINT16) // 40050
-                .channel(21, ChannelId.CONTROL_MODE, ModbusType.UINT16) // 40051
-                .channel(22, ChannelId.SCALEFACTOR_POWER_TARGET, ModbusType.INT16) // 40052
-                .channel(23, ChannelId.REFERENCE_MAXIMUM_POWER, ModbusType.UINT16) // 40053
-                .build();
     }
 }

@@ -81,8 +81,6 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
 
     private ControlMode controlModeHandler;
 
-    private final Logger log = LoggerFactory.getLogger(SaxPowerImpl.class);
-
     @Override
     @Reference(//
             name = "Modbus", //
@@ -232,17 +230,12 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
                 SymmetricEss.getModbusSlaveNatureTable(accessMode),
                 ManagedSymmetricEss.getModbusSlaveNatureTable(accessMode),
                 AsymmetricEss.getModbusSlaveNatureTable(accessMode),
-                ManagedAsymmetricEss.getModbusSlaveNatureTable(accessMode),
-                SaxPower.getModbusSlaveNatureTable(accessMode)
+                ManagedAsymmetricEss.getModbusSlaveNatureTable(accessMode)
         );
     }
 
     @Override
     public String debugLog() {
-        try {
-            return "SoC:" + this.getSoc().asString() + "|L:" + this.getActivePower().asString() + "|C:" + this.getControlMode().asString();
-        } catch (OpenemsError.OpenemsNamedException e) {
-            throw new RuntimeException(e);
-        }
+        return "SoC:" + this.getSoc().asString() + "|L:" + this.getActivePower().asString();
     }
 }
