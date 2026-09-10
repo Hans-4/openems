@@ -197,7 +197,7 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
             }
             final int maxPowerReference = maxPowerReferenceValue;
 
-            int percent = activePower * 1000 / maxPowerReference;
+            int percent = activePower * 10000 / maxPowerReference;
             var setPoint = (int) TypeUtils.fitWithin(-10000, 10000, percent);
             setPowerTarget(setPoint);
 

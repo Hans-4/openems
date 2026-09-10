@@ -111,21 +111,21 @@ public class SaxPowerImplTest {
 
         sut.applyPower(1000, 0);
         assertEquals(
-                Integer.valueOf(217),
+                Integer.valueOf(2173),
                 sut.getTargetPowerChannel().getNextWriteValue().orElse(null)
         );
 
-        lastWriteField.set(sut, Instant.now());
-        sut.applyPower(2000, 0);
+        lastWriteField.set(sut, Instant.now().minusMillis(501));
+        sut.applyPower(4600, 0);
         assertEquals(
-                Integer.valueOf(217),
+                Integer.valueOf(10000),
                 sut.getTargetPowerChannel().getNextWriteValue().orElse(null)
         );
 
-        lastWriteField.set(sut, Instant.now().minusSeconds(6));
+        lastWriteField.set(sut, Instant.now().minusMillis(501));
         sut.applyPower(-1000, 0);
         assertEquals(
-                Integer.valueOf(-217),
+                Integer.valueOf(-2173),
                 sut.getTargetPowerChannel().getNextWriteValue().orElse(null)
         );
 
