@@ -7,69 +7,33 @@ import io.openems.edge.common.test.AbstractComponentTest.TestCase;
 import io.openems.edge.common.test.ComponentTest;
 import io.openems.edge.common.type.Phase;
 import io.openems.edge.ess.api.AsymmetricEss;
-import io.openems.edge.ess.api.ManagedSymmetricEss;
 import io.openems.edge.ess.api.SymmetricEss;
 import org.junit.Test;
-import java.time.Instant;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class SaxPowerImplTest {
 
     @Test
-    public void test() throws Exception {
-        new ComponentTest(new SaxPowerImpl())
+    public void testTimeoutIsPushedToDevice() throws Exception {
+        var sut = new SaxPowerImpl();
+        new ComponentTest(sut)
                 .addReference("cm", new DummyConfigurationAdmin())
                 .addReference("setModbus", new DummyModbusBridge("modbus0"))
                 .activate(MyConfig.create()
                         .setId("ess0")
                         .setModbusId("modbus0")
-                        .setModbusUnitId(64)
-                        .setCapacity(7000)
-                        .build()
-                )
+                        .setModbusUnitId(100)
+                        .setTimeout(60)
+                        .build())
                 .next(new TestCase()
-                        .output(SymmetricEss.ChannelId.CAPACITY, 7000)
-                )
-                .deactivate();
-    }
+                        .input(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, 4600));
 
-    @Test
-    public void testLimits() throws Exception {
-        new ComponentTest(new SaxPowerImpl())
-                .addReference("cm", new DummyConfigurationAdmin())
-                .addReference("setModbus", new DummyModbusBridge("modbus0"))
-                .activate(MyConfig.create()
-                        .setId("ess0")
-                        .setModbusId("modbus0")
-                        .setModbusUnitId(64)
-                        .setCapacity(7000)
-                        .setMaxDischargePower(4600)
-                        .setMaxChargePower(1400)
-                        .setMinSoc(10)
-                        .build()
-                )
-                .next(new TestCase()
-                        .input(SymmetricEss.ChannelId.SOC, 80)
-                        .output(ManagedSymmetricEss.ChannelId.ALLOWED_CHARGE_POWER, -1400)
-                        .output(ManagedSymmetricEss.ChannelId.ALLOWED_DISCHARGE_POWER, 4600)
-                )
-                .next(new TestCase()
-                        .input(SymmetricEss.ChannelId.SOC, 100)
-                        .output(ManagedSymmetricEss.ChannelId.ALLOWED_CHARGE_POWER, 0)
-                        .output(ManagedSymmetricEss.ChannelId.ALLOWED_DISCHARGE_POWER, 4600)
-                )
-                .next(new TestCase()
-                        .input(SymmetricEss.ChannelId.SOC, 10)
-                        .output(ManagedSymmetricEss.ChannelId.ALLOWED_CHARGE_POWER, -1400)
-                        .output(ManagedSymmetricEss.ChannelId.ALLOWED_DISCHARGE_POWER, 0)
-                )
-                .next(new TestCase()
-                        .input(SymmetricEss.ChannelId.SOC, null)
-                        .output(ManagedSymmetricEss.ChannelId.ALLOWED_CHARGE_POWER, null)
-                        .output(ManagedSymmetricEss.ChannelId.ALLOWED_DISCHARGE_POWER, null)
-                )
-                .deactivate();
+        sut.applyPower(0, 0);
+
+        assertEquals(Integer.valueOf(60), sut.getTimeoutChannel().getNextWriteValue().orElse(null));
+        assertEquals(Integer.valueOf(1), sut.getControlModeChannel().getNextWriteValue().orElse(null));
+        sut.deactivate();
     }
 
     @Test
@@ -100,29 +64,23 @@ public class SaxPowerImplTest {
                         .setId("ess0")
                         .setModbusId("modbus0")
                         .setModbusUnitId(100)
-                        .setCapacity(7000)
                         .build()
                 )
                 .next(new TestCase()
                         .input(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, 4600)
                 );
-        var lastWriteField = SaxPowerImpl.class.getDeclaredField("lastWrite");
-        lastWriteField.setAccessible(true);
-
         sut.applyPower(1000, 0);
         assertEquals(
                 Integer.valueOf(2173),
                 sut.getTargetPowerChannel().getNextWriteValue().orElse(null)
         );
 
-        lastWriteField.set(sut, Instant.now().minusMillis(501));
         sut.applyPower(4600, 0);
         assertEquals(
                 Integer.valueOf(10000),
                 sut.getTargetPowerChannel().getNextWriteValue().orElse(null)
         );
 
-        lastWriteField.set(sut, Instant.now().minusMillis(501));
         sut.applyPower(-1000, 0);
         assertEquals(
                 Integer.valueOf(-2173),
@@ -142,7 +100,6 @@ public class SaxPowerImplTest {
                         .setId("ess0")
                         .setModbusId("modbus0")
                         .setModbusUnitId(100)
-                        .setCapacity(7000)
                         .build()
                 )
 
@@ -167,7 +124,6 @@ public class SaxPowerImplTest {
                         .setId("ess0")
                         .setModbusId("modbus0")
                         .setModbusUnitId(100)
-                        .setCapacity(7000)
                         .build()
                 );
 

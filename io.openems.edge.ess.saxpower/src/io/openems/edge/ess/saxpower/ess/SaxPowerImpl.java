@@ -28,6 +28,7 @@ import io.openems.edge.ess.power.api.Power;
 import io.openems.edge.common.sum.GridMode;
 import io.openems.edge.ess.saxpower.AddressList;
 import io.openems.edge.ess.saxpower.ApplyScaleFactor;
+import io.openems.edge.ess.saxpower.CheckScaleFactorMap;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
 import org.osgi.service.component.annotations.Activate;
@@ -36,11 +37,9 @@ import org.osgi.service.component.annotations.ConfigurationPolicy;
 import org.osgi.service.component.annotations.Deactivate;
 import org.osgi.service.component.annotations.Reference;
 import org.osgi.service.metatype.annotations.Designate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
-import java.time.Instant;
-
-import static io.openems.edge.common.channel.ChannelUtils.setValue;
 import static org.osgi.service.component.annotations.ReferenceCardinality.MANDATORY;
 import static org.osgi.service.component.annotations.ReferencePolicy.STATIC;
 import static org.osgi.service.component.annotations.ReferencePolicyOption.GREEDY;
@@ -59,7 +58,7 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
 
 
     private final int powerAddress = AddressList.BATTERY_POWER.getAddress();
-    private final int powerScaleFactorAddress = AddressList.BATTERY_POWER_SCALE_FACTOR.getAddress();
+    private final int powerScaleFactor = AddressList.BATTERY_POWER_SCALE_FACTOR.getAddress();
 
     private final int powerTarget =  AddressList.BATTERY_POWER_TARGET.getAddress();
     private final int timeout = AddressList.TIMEOUT.getAddress();
@@ -67,7 +66,15 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     private final int scaleFactorPowerTarget = AddressList.BATTERY_POWER_TARGET_SCALE_FACTOR.getAddress();
     private final int maxPowerReference = AddressList.BATTERY_MAX_POWER_REFERENCE.getAddress();
 
+    private final int capacity = AddressList.CAPACITY.getAddress();
+    private final int capacityScaleFactor = AddressList.CAPACITY_SCALE_FACTOR.getAddress();
+
+    private final int maxChargePower = AddressList.CHARGE_POWER.getAddress();
+    private final int maxDischargePower = AddressList.DISCHARGE_POWER.getAddress();
+    private final int chargeDischargePowerScaleFactor = AddressList.CHARGE_DISCHARGE_POWER_SCALE_FACTOR.getAddress();
+
     private final int currentSoc = AddressList.CURRENT_SOC.getAddress();
+    private final int socScaleFactor = AddressList.SOC_SCALE_FACTOR.getAddress();
 
 
     @Reference
@@ -78,6 +85,8 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     private Config config;
 
     private ControlMode controlModeHandler;
+
+    private final Logger log = LoggerFactory.getLogger(SaxPowerImpl.class);
 
     @Override
     @Reference(//
@@ -107,61 +116,59 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
     @Activate
     private void activate(ComponentContext context, Config config) throws OpenemsError.OpenemsNamedException {
         this.config = config;
-        SinglePhase phase = config.phase();
+        final SinglePhase phase = config.phase();
 
         if (super.activate(context, config.id(), config.alias(), config.enabled(), config.modbusUnitId(), this.cm, //
                 "Modbus", config.modbus_id())) {
             return;
         }
 
-        this.controlModeHandler = new ControlMode(this, 1, config.timeout());
+        boolean correctTimeout = config.timeout() >= 1 && config.timeout() <= 300;
+        if (!correctTimeout) {
+            this.log.warn("Invalid timeout {} s, falling back to 60 s.", config.timeout());
+        }
+        int timeout = correctTimeout ? config.timeout() : 60;
+        this.controlModeHandler = new ControlMode(this, 1, timeout);
+
 
         SinglePhaseEss.initializeCopyPhaseChannel(this, phase);
 
-        this._setCapacity(this.config.capacity());
         this._setMaxApparentPower(MAX_APPARENT_POWER);
 
         this.getGridModeChannel().setNextValue(GridMode.ON_GRID);
-
-
-        this.getSocChannel().onSetNextValue(soc -> {
-            final Integer allowedCharge;
-            final Integer allowedDischarge;
-            if (soc.isDefined()) {
-                allowedCharge = soc.get() >= 100 ? 0 : -this.config.maxChargePower();
-                allowedDischarge = soc.get() <= config.minSoc() ? 0 : this.config.maxDischargePower();
-            } else {
-                allowedCharge = null;
-                allowedDischarge = null;
-            }
-            setValue(this, ManagedSymmetricEss.ChannelId.ALLOWED_CHARGE_POWER, allowedCharge);
-            setValue(this, ManagedSymmetricEss.ChannelId.ALLOWED_DISCHARGE_POWER, allowedDischarge);
-        });
     }
 
     @Override
     @Deactivate
     protected void deactivate() {
-        this.lastWrite = null;
         super.deactivate();
     }
 
     private final ApplyScaleFactor applyScaleFactor = new ApplyScaleFactor();
+    private final CheckScaleFactorMap checkScaleFactorMap = new CheckScaleFactorMap();
 
     @Override
     protected ModbusProtocol defineModbusProtocol() {
         return new ModbusProtocol(this,
                 new FC3ReadRegistersTask(this.powerAddress, Priority.HIGH,
                         m(SymmetricEss.ChannelId.ACTIVE_POWER, new SignedWordElement(this.powerAddress), this.applyScaleFactor.createScalingConverter(this.powerAddress, 1)),
-                        m(SaxPower.ChannelId.POWER_SCALE_FACTOR, new SignedWordElement(this.powerScaleFactorAddress)),
+                        m(SaxPower.ChannelId.POWER_SCALE_FACTOR, new SignedWordElement(this.powerScaleFactor), this.checkScaleFactorMap.getValue(this.powerScaleFactor)),
                         new DummyRegisterElement(40031,40048),
                         m(SaxPower.ChannelId.POWER_TARGET, new SignedWordElement(this.powerTarget), this.applyScaleFactor.createScalingConverter(this.powerTarget, 1)),
                         m(SaxPower.ChannelId.TIMEOUT, new UnsignedWordElement(this.timeout)),
                         m(SaxPower.ChannelId.CONTROL_MODE,  new UnsignedWordElement(this.controlMode)),
-                        m(SaxPower.ChannelId.SCALEFACTOR_POWER_TARGET, new SignedWordElement(this.scaleFactorPowerTarget)),
+                        m(SaxPower.ChannelId.SCALE_FACTOR_POWER_TARGET, new SignedWordElement(this.scaleFactorPowerTarget)),
                         m(SaxPower.ChannelId.REFERENCE_MAXIMUM_POWER, new UnsignedWordElement(this.maxPowerReference)),
-                        new DummyRegisterElement(40054, 40101),
-                        m(SymmetricEss.ChannelId.SOC, new SignedWordElement(this.currentSoc))
+                        new DummyRegisterElement(40054, 40096),
+                        m(SymmetricEss.ChannelId.CAPACITY, new SignedWordElement(this.capacity), this.applyScaleFactor.createScalingConverter(this.capacity, 1)),
+                        m(ManagedSymmetricEss.ChannelId.ALLOWED_CHARGE_POWER, new SignedWordElement(this.maxChargePower), this.applyScaleFactor.createScalingConverter(this.maxChargePower, -1)),
+                        m(ManagedSymmetricEss.ChannelId.ALLOWED_DISCHARGE_POWER, new SignedWordElement(this.maxDischargePower), this.applyScaleFactor.createScalingConverter(this.maxDischargePower, 1)),
+                        new DummyRegisterElement(40100, 40101),
+                        m(SymmetricEss.ChannelId.SOC, new SignedWordElement(this.currentSoc), this.applyScaleFactor.createScalingConverter(this.currentSoc, 1)),
+                        new DummyRegisterElement(40103, 40109),
+                        m(SaxPower.ChannelId.CAPACITY_SCALE_FACTOR, new SignedWordElement(this.capacityScaleFactor), this.checkScaleFactorMap.getValue(this.capacityScaleFactor)),
+                        m(SaxPower.ChannelId.CHARGE_DISCHARGE_SCALE_FACTOR, new SignedWordElement(this.chargeDischargePowerScaleFactor), this.checkScaleFactorMap.getValue(this.chargeDischargePowerScaleFactor)),
+                        m(SaxPower.ChannelId.SOC_SCALE_FACTOR, new SignedWordElement(this.socScaleFactor), this.checkScaleFactorMap.getValue(this.socScaleFactor))
                 ),
 
                 new FC16WriteRegistersTask(this.powerTarget,
@@ -180,29 +187,21 @@ public class SaxPowerImpl extends AbstractOpenemsModbusComponent
         };
     }
 
-    private Instant lastWrite = null;
-
     @Override
     public void applyPower(int activePower, int reactivePower) throws OpenemsError.OpenemsNamedException {
-        final var now = Instant.now();
 
-        // Recommend write interval 500 ms
-        if (this.lastWrite == null || Duration.between(this.lastWrite, now).toMillis() > 500) {
+        this.controlModeHandler.check();
 
-            this.controlModeHandler.check();
-
-            final var maxPowerReferenceValue = this.getReferenceMaximumPower().get();
-            if (maxPowerReferenceValue == null || maxPowerReferenceValue <= 0) {
-                return;
-            }
-            final int maxPowerReference = maxPowerReferenceValue;
-
-            int percent = activePower * 10000 / maxPowerReference;
-            var setPoint = (int) TypeUtils.fitWithin(-10000, 10000, percent);
-            setPowerTarget(setPoint);
-
-            this.lastWrite = now;
+        final var maxPowerReferenceValue = this.getReferenceMaximumPower().get();
+        if (maxPowerReferenceValue == null || maxPowerReferenceValue <= 0) {
+            this.log.warn("Invalid maximum power reference value");
+            return;
         }
+        final int maxPowerReference = maxPowerReferenceValue;
+
+        int percent = activePower * 10000 / maxPowerReference;
+        var setPoint = (int) TypeUtils.fitWithin(-10000, 10000, percent);
+        setPowerTarget(setPoint);
     }
 
     @Override

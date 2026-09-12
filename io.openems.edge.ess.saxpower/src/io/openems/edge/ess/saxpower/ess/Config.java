@@ -27,28 +27,7 @@ public @interface Config {
     @AttributeDefinition(name = "Phase", description = "Which Phase is this ESS connected to?")
     SinglePhase phase() default SinglePhase.L1;
 
-    @AttributeDefinition(name = "Capacity", description = "The Capacity of the ESS in Wh" + "Usable capacity as stated, not installed (5,8 kWh = 5,2 kWh, 7,7 kWh = 7,0 kWh")
-    int capacity() default 7000;
-
-    @AttributeDefinition(//
-            name = "Max charge power", //
-            description = "Maximum charge power in W, as a positive value. " //
-                    + "Must match the value configured in the SAX dashboard. " //
-                    + "See the readme for a guide.")
-    int maxChargePower() default 1400;
-
-
-    @AttributeDefinition(//
-            name = "Max discharge power", //
-            description = "Maximum discharge power in W, as a positive value. " //
-                    + "Must match the value configured in the SAX dashboard. " //
-                    + "See the readme for a guide.")
-    int maxDischargePower() default 4600;
-
-    @AttributeDefinition(name = "Min SoC [%]", description = "Discharging is blocked while State of Charge is below Min-SoC.")
-    int minSoc() default 15;
-
-    @AttributeDefinition(name = "Timeout", description = "Time after the battery switches to normal mode")
+    @AttributeDefinition(name = "Timeout", description = "Time in seconds after the battery switches to normal mode. Set value between 1 and 300")
     int timeout() default 60;
 
     String webconsole_configurationFactory_nameHint() default "SAX Power ESS [{id}]";

@@ -16,6 +16,7 @@ import io.openems.edge.common.modbusslave.ModbusSlaveTable;
 import io.openems.edge.common.taskmanager.Priority;
 import io.openems.edge.ess.saxpower.AddressList;
 import io.openems.edge.ess.saxpower.ApplyScaleFactor;
+import io.openems.edge.ess.saxpower.CheckScaleFactorMap;
 import io.openems.edge.meter.api.ElectricityMeter;
 import org.osgi.service.cm.ConfigurationAdmin;
 import org.osgi.service.component.ComponentContext;
@@ -94,6 +95,7 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
     }
 
     private final ApplyScaleFactor applyScaleFactor = new ApplyScaleFactor();
+    private final CheckScaleFactorMap checkScaleFactorMap = new CheckScaleFactorMap();
 
     @Override
     protected ModbusProtocol defineModbusProtocol() {
@@ -103,7 +105,7 @@ public class SaxPowerEssGridMeterImpl extends AbstractOpenemsModbusComponent
                         m(ElectricityMeter.ChannelId.ACTIVE_POWER_L1, new SignedWordElement(this.gridPowerL1Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL1Address, -1)), //
                         m(ElectricityMeter.ChannelId.ACTIVE_POWER_L2, new SignedWordElement(this.gridPowerL2Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL2Address, -1)), //
                         m(ElectricityMeter.ChannelId.ACTIVE_POWER_L3, new SignedWordElement(this.gridPowerL3Address), this.applyScaleFactor.createScalingConverter(this.gridPowerL3Address, -1)), //
-                        m(SaxPowerEssGridMeter.ChannelId.GRID_POWER_SCALE_FACTOR, this.gridPowerScaleFactor)
+                        m(SaxPowerEssGridMeter.ChannelId.GRID_POWER_SCALE_FACTOR, this.gridPowerScaleFactor, this.checkScaleFactorMap.getValue(this.gridPowerScaleFactorAddress))
                 )
         );
     }
